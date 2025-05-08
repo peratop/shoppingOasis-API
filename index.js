@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const PORT = 8080;
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 app.use(express.json());
 app.use(cors());
@@ -189,18 +191,29 @@ app.post('/api/login', function (req, res) {
         return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
     }
 
-    const sql = "SELECT * FROM usuarios WHERE nome = ? AND senha = ?";
-    conn.query(sql, [usuario, senha], function (err, result) {
+    const sql = "SELECT * FROM usuarios WHERE nome = ?";
+    conn.query(sql, [usuario], function (err, result) {
         if (err) return res.status(500).json({ error: err.message });
 
-        if (result.length > 0) {
-            res.status(200).json({ message: 'Login bem-sucedido', user: result[0] });
-        } else {
-            res.status(401).json({ error: 'Credenciais inválidas' });
+        if (result.length === 0) {
+            return res.status(401).json({ error: 'Credenciais inválidas' });
         }
+
+        const usuarioDB = result[0];
+
+        bcrypt.compare(senha, usuarioDB.senha, (err, match) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            if (match) {
+                res.status(200).json({ message: 'Login bem-sucedido', user: usuarioDB });
+            } else {
+                res.status(401).json({ error: 'Credenciais inválidas' });
+            }
+        });
     });
 });
-//ROTA PARA o CADASTRP
+
+//ROTA PARA o CADASTRO
 app.post('/api/cadastro', function (req, res) {
     const { nome, email, senha } = req.body;
 
@@ -208,10 +221,14 @@ app.post('/api/cadastro', function (req, res) {
         return res.status(400).json({ error: "Campos obrigatórios não preenchidos." });
     }
 
-    const sql = "INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)";
-    conn.query(sql, [nome, email, senha], function (err, result) {
-        if (err) return res.status(500).json({ error: err.message });
+    bcrypt.hash(senha, saltRounds, (err, hash) => {
+        if (err) return res.status(500).json({ error: "Erro ao gerar hash da senha." });
 
-        res.status(201).json({ message: "Usuário cadastrado com sucesso!", id: result.insertId });
+        const sql = "INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)";
+        conn.query(sql, [nome, email, hash], function (err, result) {
+            if (err) return res.status(500).json({ error: err.message });
+
+            res.status(201).json({ message: "Usuário cadastrado com sucesso!", id: result.insertId });
+        });
     });
 });

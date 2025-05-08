@@ -6,86 +6,212 @@ const PORT = 8080;
 app.use(express.json());
 app.use(cors());
 
-//import do modulo de mysql
 var mysql = require('mysql2');
 
-//criando a variável conn que vai ter a referência de conexão
-//com o banco de dados
+// Conexão do banco
 var conn = mysql.createConnection({
     host: "localhost",
     user: "root",
     password: "pucPR@1234",
     database: "shopping_oasis",
-    port:"3306"
+    port: "3306"
 });
 
-//tentando connectar
-//a variável con tem a conexão agora
 conn.connect(function (err) {
     if (err) throw err;
     console.log("Connected!");
 });
 
-const adminMiddleware = async (req, res) => {
+// Middleware 
+const adminMiddleware = async (req, res, next) => {
     try {
-        const [users] = await conn.execute(
-            'SELECT tipo FROM usuarios WHERE id = ?'
+        const [users] = await conn.promise().execute(
+            'SELECT tipo FROM usuarios WHERE id = ?',
             [req.userId]
         );
-    if (users.length > 0 && users[0].tipo === 'admin')
-    {
-        return next();
+        if (users.length > 0 && users[0].tipo === 'admin') {
+            return next();
+        }
+        res.status(403).json({ error: 'Acesso negado' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
-    res.status(403).json({ error: 'Acesso negado'});
-} catch (error) {
-    res.status(500).json({ error: error.message });
-}
 };
 
-//API ROTA PARA USUÁRIO
+// --- ROTAS USUARIO
+
 app.get('/api/usuario', function (req, res) {
     let sql = "SELECT u.id, u.nome FROM usuarios u";
     conn.query(sql, function (err, result) {
-        if (err) res.status(500).json(err);
+        if (err) return res.status(500).json(err);
         res.status(200).json(result);
     });
 });
 
 app.post('/api/usuario', function (req, res) {
-    //captura o json com os dados do usuário
     var usuario = req.body;
-    //variável sql par armazenar o comando que vai rodar no banco
-    var sql = '';
-    //valido se o usuário existe pelo id -> caso exista é um update    
     if (usuario.id) {
-        sql = `UPDATE usuario SET nome = '${usuario.nome}'
-        WHERE id = ${usuario.id}`; 
+        sql = "UPDATE usuarios SET nome = ? WHERE id = ?";
+        conn.query(sql, [usuario.nome, usuario.id], function (err, result) {
+            if (err) return res.status(500).json(err);
+            res.status(201).json(usuario);
+        });
     } else {
-        sql = `INSERT INTO usuario (nome) VALUES 
-    ('${usuario.nome}')`;
+        sql = "INSERT INTO usuarios (nome) VALUES (?)";
+        conn.query(sql, [usuario.nome], function (err, result) {
+            if (err) return res.status(500).json(err);
+            usuario.id = result.insertId;
+            res.status(201).json(usuario);
+        });
     }
-    //executa o comando de insert ou update
-    conn.query(sql, function (err, result) {
-        if (err) throw err;
-    });
-    res.status(201).json(usuario);
 });
 
-//endpoint para capturar um usuário por id
 app.get('/api/usuario/:id', (req, res) => {
     const { id } = req.params;
-
-    console.log(id)
-
-    let sql = `SELECT u.id, u.nome FROM usuario u WHERE u.id = ${id}`;
-    conn.query(sql, function (err, result) {
-        if (err) throw err;
-        console.log(result)
+    let sql = "SELECT u.id, u.nome FROM usuarios u WHERE u.id = ?";
+    conn.query(sql, [id], function (err, result) {
+        if (err) return res.status(500).json(err);
         res.status(200).json(result[0]);
     });
 });
 
+app.delete('/api/usuario/:id', function (req, res) {
+    const { id } = req.params;
+    let sql = "DELETE FROM usuarios WHERE id = ?";
+    conn.query(sql, [id], function (err, result) {
+        if (err) return res.status(500).json(err);
+        res.status(200).json({ message: 'Usuário deletado com sucesso!' });
+    });
+});
+
+// ---ROTAS LOJAS---
+
+app.get('/api/loja', function (req, res) {
+    let sql = "SELECT l.id, l.nome FROM lojas l";
+    conn.query(sql, function (err, result) {
+        if (err) return res.status(500).json(err);
+        res.status(200).json(result);
+    });
+});
+
+app.post('/api/loja', function (req, res) {
+    var loja = req.body;
+    if (loja.id) {
+        sql = "UPDATE lojas SET nome = ? WHERE id = ?";
+        conn.query(sql, [loja.nome, loja.id], function (err, result) {
+            if (err) return res.status(500).json(err);
+            res.status(201).json(loja);
+        });
+    } else {
+        sql = "INSERT INTO lojas (nome) VALUES (?)";
+        conn.query(sql, [loja.nome], function (err, result) {
+            if (err) return res.status(500).json(err);
+            loja.id = result.insertId;
+            res.status(201).json(loja);
+        });
+    }
+});
+
+app.get('/api/loja/:id', (req, res) => {
+    const { id } = req.params;
+    let sql = "SELECT l.id, l.nome FROM lojas l WHERE l.id = ?";
+    conn.query(sql, [id], function (err, result) {
+        if (err) return res.status(500).json(err);
+        res.status(200).json(result[0]);
+    });
+});
+
+app.delete('/api/loja/:id', function (req, res) {
+    const { id } = req.params;
+    let sql = "DELETE FROM lojas WHERE id = ?";
+    conn.query(sql, [id], function (err, result) {
+        if (err) return res.status(500).json(err);
+        res.status(200).json({ message: 'Loja deletada com sucesso!' });
+    });
+});
+
+// ---ROTAS EVENTOS---
+
+app.get('/api/evento', function (req, res) {
+    let sql = "SELECT e.id, e.nome FROM eventos e";
+    conn.query(sql, function (err, result) {
+        if (err) return res.status(500).json(err);
+        res.status(200).json(result);
+    });
+});
+
+app.post('/api/evento', function (req, res) {
+    var evento = req.body;
+    if (evento.id) {
+        sql = "UPDATE eventos SET nome = ? WHERE id = ?";
+        conn.query(sql, [evento.nome, evento.id], function (err, result) {
+            if (err) return res.status(500).json(err);
+            res.status(201).json(evento);
+        });
+    } else {
+        sql = "INSERT INTO eventos (nome) VALUES (?)";
+        conn.query(sql, [evento.nome], function (err, result) {
+            if (err) return res.status(500).json(err);
+            evento.id = result.insertId;
+            res.status(201).json(evento);
+        });
+    }
+});
+
+app.get('/api/evento/:id', (req, res) => {
+    const { id } = req.params;
+    let sql = "SELECT e.id, e.nome FROM eventos e WHERE e.id = ?";
+    conn.query(sql, [id], function (err, result) {
+        if (err) return res.status(500).json(err);
+        res.status(200).json(result[0]);
+    });
+});
+
+app.delete('/api/evento/:id', function (req, res) {
+    const { id } = req.params;
+    let sql = "DELETE FROM eventos WHERE id = ?";
+    conn.query(sql, [id], function (err, result) {
+        if (err) return res.status(500).json(err);
+        res.status(200).json({ message: 'Evento deletado com sucesso!' });
+    });
+});
+
+// ==================== INICIAR SERVIDOR ====================
+
 app.listen(PORT, function (err) {
     if (err) console.log(err);
     console.log("Server listening on PORT", PORT);
+});
+app.post('/api/login', function (req, res) {
+    const { usuario, senha } = req.body;
+
+    if (!usuario || !senha) {
+        return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
+    }
+
+    const sql = "SELECT * FROM usuarios WHERE nome = ? AND senha = ?";
+    conn.query(sql, [usuario, senha], function (err, result) {
+        if (err) return res.status(500).json({ error: err.message });
+
+        if (result.length > 0) {
+            res.status(200).json({ message: 'Login bem-sucedido', user: result[0] });
+        } else {
+            res.status(401).json({ error: 'Credenciais inválidas' });
+        }
+    });
+});
+//ROTA PARA o CADASTRP
+app.post('/api/cadastro', function (req, res) {
+    const { nome, email, senha } = req.body;
+
+    if (!nome || !email || !senha) {
+        return res.status(400).json({ error: "Campos obrigatórios não preenchidos." });
+    }
+
+    const sql = "INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)";
+    conn.query(sql, [nome, email, senha], function (err, result) {
+        if (err) return res.status(500).json({ error: err.message });
+
+        res.status(201).json({ message: "Usuário cadastrado com sucesso!", id: result.insertId });
+    });
 });

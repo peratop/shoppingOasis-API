@@ -111,11 +111,20 @@ app.get('/api/admin/dashboard', verificarToken, (req, res) => {
 // ---ROTAS LOJAS---
 
 app.get('/api/loja', function (req, res) {
-    let sql = "SELECT l.id, l.nome FROM lojas l";
-    conn.query(sql, function (err, result) {
-        if (err) return res.status(500).json(err);
-        res.status(200).json(result);
-    });
+    let sql = "SELECT * FROM lojas";
+    const { status } = req.query;
+    if (status) {
+        sql += " WHERE status = ?";
+        conn.query(sql, [status], function (err, result) {
+            if (err) return res.status(500).json(err);
+            res.status(200).json(result);
+        });
+    } else {
+        conn.query(sql, function (err, result) {
+            if (err) return res.status(500).json(err);
+            res.status(200).json(result);
+        });
+    }
 });
 
 app.post('/api/loja', function (req, res) {
@@ -157,12 +166,22 @@ app.delete('/api/loja/:id', function (req, res) {
 // ---ROTAS EVENTOS---
 
 app.get('/api/evento', function (req, res) {
-    let sql = "SELECT e.id, e.nome FROM eventos e";
-    conn.query(sql, function (err, result) {
-        if (err) return res.status(500).json(err);
-        res.status(200).json(result);
-    });
+    let sql = "SELECT * FROM eventos";
+    const { status } = req.query;
+    if (status) {
+        sql += " WHERE status = ?";
+        conn.query(sql, [status], function (err, result) {
+            if (err) return res.status(500).json(err);
+            res.status(200).json(result);
+        });
+    } else {
+        conn.query(sql, function (err, result) {
+            if (err) return res.status(500).json(err);
+            res.status(200).json(result);
+        });
+    }
 });
+
 
 app.post('/api/evento', function (req, res) {
     var evento = req.body;

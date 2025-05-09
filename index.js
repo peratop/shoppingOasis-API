@@ -200,7 +200,7 @@ app.delete('/api/evento/:id', function (req, res) {
     });
 });
 
-// ==================== INICIAR SERVIDOR ====================
+// =================== INICIAR SERVIDOR ====================
 
 app.listen(PORT, function (err) {
     if (err) console.log(err);

@@ -14,7 +14,7 @@ CREATE TABLE usuarios (
 
 -- Inserção do usuário admin fixo (id = 1)
 INSERT INTO usuarios (id, nome, email, senha, tipo) VALUES 
-(1, 'Administrador', 'admin@oasis.com', '$2y$10$N9qo8uLOickgx2ZMRZoMy.MH1pQ6x7/PAgJ2T7jJ3H6z5s1VYJQbW', 'admin');
+(1, 'Adm', 'admin@oasis.com', '$2b$10$39Fp1dtBoRN7UZGHB2/CCeFmtm7KHzhS2fsYAVVh.pWz3rMkdJyk2', 'admin');
 
 -- Tabela de lojas (para cadastro de negócios)
 CREATE TABLE lojas (

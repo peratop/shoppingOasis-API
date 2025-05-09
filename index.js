@@ -4,6 +4,8 @@ const app = express();
 const PORT = 8080;
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
+const jwt = require('jsonwebtoken');
+const SECRET = 'segreto-seguro'; 
 
 app.use(express.json());
 app.use(cors());
@@ -39,6 +41,19 @@ const adminMiddleware = async (req, res, next) => {
         res.status(500).json({ error: error.message });
     }
 };
+function verificarToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+  
+    if (!token) return res.status(401).json({ error: 'Token não fornecido' });
+  
+    jwt.verify(token, SECRET, (err, user) => {
+      if (err) return res.status(403).json({ error: 'Token inválido' });
+      req.user = user;
+      next();
+    });
+  }
+  
 
 // --- ROTAS USUARIO
 
@@ -85,7 +100,14 @@ app.delete('/api/usuario/:id', function (req, res) {
         res.status(200).json({ message: 'Usuário deletado com sucesso!' });
     });
 });
-
+//rota protegida ADM
+app.get('/api/admin/dashboard', verificarToken, (req, res) => {
+    if (req.user.tipo !== 'admin') {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
+    res.json({ msg: 'Bem-vindo, admin!' });
+  });
+  
 // ---ROTAS LOJAS---
 
 app.get('/api/loja', function (req, res) {
@@ -205,7 +227,18 @@ app.post('/api/login', function (req, res) {
             if (err) return res.status(500).json({ error: err.message });
 
             if (match) {
-                res.status(200).json({ message: 'Login bem-sucedido', user: usuarioDB });
+                const token = jwt.sign(
+                    { id: usuarioDB.id, tipo: usuarioDB.tipo },
+                    SECRET,
+                    { expiresIn: '1h' }
+                  );
+                  
+                  res.status(200).json({
+                    message: 'Login bem-sucedido',
+                    token,
+                    user: { nome: usuarioDB.nome, tipo: usuarioDB.tipo }
+                  });
+                  
             } else {
                 res.status(401).json({ error: 'Credenciais inválidas' });
             }

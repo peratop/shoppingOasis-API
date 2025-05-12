@@ -107,6 +107,13 @@ app.get('/api/admin/dashboard', verificarToken, (req, res) => {
     }
     res.json({ msg: 'Bem-vindo, admin!' });
   });
+  app.get('/api/stats/usuarios', (req, res) => {
+    const sql = "SELECT COUNT(*) AS total FROM usuarios";
+    conn.query(sql, (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(200).json(result[0]);
+    });
+});
   
 // ---ROTAS LOJAS---
 
@@ -160,6 +167,13 @@ app.delete('/api/loja/:id', function (req, res) {
     conn.query(sql, [id], function (err, result) {
         if (err) return res.status(500).json(err);
         res.status(200).json({ message: 'Loja deletada com sucesso!' });
+    });
+});
+app.get('/api/stats/lojas', (req, res) => {
+    const sql = "SELECT COUNT(*) AS total FROM lojas WHERE status = 'aprovado'";
+    conn.query(sql, (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(200).json(result[0]);
     });
 });
 

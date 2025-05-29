@@ -85,12 +85,33 @@ app.post('/api/usuario', function (req, res) {
 
 app.get('/api/usuario/:id', (req, res) => {
     const { id } = req.params;
-    let sql = "SELECT u.id, u.nome FROM usuarios u WHERE u.id = ?";
+    const sql = "SELECT id, nome, email, senha FROM usuarios WHERE id = ?";
     conn.query(sql, [id], function (err, result) {
         if (err) return res.status(500).json(err);
+        if (result.length === 0) return res.status(404).json({ error: "Usuário não encontrado." });
         res.status(200).json(result[0]);
     });
 });
+
+app.put('/api/usuario/:id', (req, res) => {
+    const { id } = req.params;
+    const { nome, email, senha } = req.body;
+
+    if (!nome || !email || !senha) {
+        return res.status(400).json({ error: "Todos os campos são obrigatórios." });
+    }
+
+    bcrypt.hash(senha, saltRounds, (err, hash) => {
+        if (err) return res.status(500).json({ error: "Erro ao criptografar a senha." });
+
+        const sql = "UPDATE usuarios SET nome = ?, email = ?, senha = ? WHERE id = ?";
+        conn.query(sql, [nome, email, hash, id], function (err, result) {
+            if (err) return res.status(500).json(err);
+            res.status(200).json({ message: "Usuário atualizado com sucesso!" });
+        });
+    });
+});
+
 
 app.delete('/api/usuario/:id', function (req, res) {
     const { id } = req.params;
@@ -269,7 +290,7 @@ app.post('/api/login', function (req, res) {
                   res.status(200).json({
                     message: 'Login bem-sucedido',
                     token,
-                    user: { nome: usuarioDB.nome, tipo: usuarioDB.tipo }
+                    user: { id: usuarioDB.id, nome: usuarioDB.nome, tipo: usuarioDB.tipo }
                   });
                   
             } else {

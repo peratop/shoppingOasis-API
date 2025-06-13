@@ -95,19 +95,41 @@ app.get('/api/usuario/:id', (req, res) => {
 
 app.put('/api/usuario/:id', (req, res) => {
     const { id } = req.params;
-    const { nome, email, senha } = req.body;
+    const { nome, email, senha, senhaAtual } = req.body;
 
-    if (!nome || !email || !senha) {
-        return res.status(400).json({ error: "Todos os campos são obrigatórios." });
+    if (!nome || !email || !senhaAtual) {
+        return res.status(400).json({ error: "Nome, email e senha atual são obrigatórios." });
     }
 
-    bcrypt.hash(senha, saltRounds, (err, hash) => {
-        if (err) return res.status(500).json({ error: "Erro ao criptografar a senha." });
+    // Busca o hash da senha atual no banco
+    const sqlBusca = "SELECT senha FROM usuarios WHERE id = ?";
+    conn.query(sqlBusca, [id], function (err, result) {
+        if (err) return res.status(500).json({ error: "Erro ao buscar usuário." });
+        if (result.length === 0) return res.status(404).json({ error: "Usuário não encontrado." });
 
-        const sql = "UPDATE usuarios SET nome = ?, email = ?, senha = ? WHERE id = ?";
-        conn.query(sql, [nome, email, hash, id], function (err, result) {
-            if (err) return res.status(500).json(err);
-            res.status(200).json({ message: "Usuário atualizado com sucesso!" });
+        const hashSalvo = result[0].senha;
+        bcrypt.compare(senhaAtual, hashSalvo, (err, match) => {
+            if (err) return res.status(500).json({ error: "Erro ao validar senha." });
+            if (!match) return res.status(401).json({ error: "Senha atual incorreta." });
+
+            // Se o usuário quer trocar a senha
+            if (senha) {
+                bcrypt.hash(senha, saltRounds, (err, hash) => {
+                    if (err) return res.status(500).json({ error: "Erro ao criptografar a nova senha." });
+                    const sql = "UPDATE usuarios SET nome = ?, email = ?, senha = ? WHERE id = ?";
+                    conn.query(sql, [nome, email, hash, id], function (err, result) {
+                        if (err) return res.status(500).json(err);
+                        res.status(200).json({ message: "Usuário atualizado com sucesso!" });
+                    });
+                });
+            } else {
+                // Só atualiza nome/email
+                const sql = "UPDATE usuarios SET nome = ?, email = ? WHERE id = ?";
+                conn.query(sql, [nome, email, id], function (err, result) {
+                    if (err) return res.status(500).json(err);
+                    res.status(200).json({ message: "Usuário atualizado com sucesso!" });
+                });
+            }
         });
     });
 });

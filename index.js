@@ -6,8 +6,11 @@ const bcrypt = require('bcrypt');
 const saltRounds = 10;
 const jwt = require('jsonwebtoken');
 const SECRET = 'segreto-seguro'; 
+const router = express.Router();
+
 
 app.use(express.json());
+app.use('/api', router);
 app.use(cors());
 
 var mysql = require('mysql2');
@@ -160,121 +163,247 @@ app.get('/api/admin/dashboard', verificarToken, (req, res) => {
   
 // ---ROTAS LOJAS---
 
-app.get('/api/loja', function (req, res) {
-    let sql = "SELECT * FROM lojas";
-    const { status } = req.query;
-    if (status) {
-        sql += " WHERE status = ?";
-        conn.query(sql, [status], function (err, result) {
-            if (err) return res.status(500).json(err);
-            res.status(200).json(result);
-        });
-    } else {
-        conn.query(sql, function (err, result) {
-            if (err) return res.status(500).json(err);
-            res.status(200).json(result);
-        });
+// --- ROTAS LOJAS ---
+
+// Rota GET para todas as lojas (aprovadas)
+app.get('/api/loja', async (req, res) => {
+    try {
+        const [lojas] = await conn.promise().query(`
+            SELECT 
+                id,
+                nome_negocio,
+                categoria,
+                email,
+                telefone,
+                descricao,
+                imagem_blob,
+                status
+            FROM lojas
+            WHERE status = 'aprovado'
+        `);
+
+        const lojasComImagens = lojas.map(loja => ({
+            ...loja,
+            imagem_base64: loja.imagem_blob ? loja.imagem_blob.toString('base64') : null
+        }));
+
+        res.status(200).json(lojasComImagens);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Erro ao buscar lojas" });
     }
 });
 
-app.post('/api/loja', function (req, res) {
-    var loja = req.body;
-    if (loja.id) {
-        sql = "UPDATE lojas SET nome = ? WHERE id = ?";
-        conn.query(sql, [loja.nome, loja.id], function (err, result) {
-            if (err) return res.status(500).json(err);
-            res.status(201).json(loja);
-        });
-    } else {
-        sql = "INSERT INTO lojas (nome) VALUES (?)";
-        conn.query(sql, [loja.nome], function (err, result) {
-            if (err) return res.status(500).json(err);
-            loja.id = result.insertId;
-            res.status(201).json(loja);
-        });
+// Rota POST para criar/atualizar lojas
+router.post('/api/loja', async (req, res) => {
+    try {
+        const loja = req.body;
+        let sql, params;
+
+        if (loja.id) {
+            sql = "UPDATE lojas SET nome_negocio = ?, cnpj = ?, telefone = ?, email = ?, descricao = ?, categoria = ?, status = ? WHERE id = ?";
+            params = [
+                loja.nome_negocio,
+                loja.cnpj,
+                loja.telefone,
+                loja.email,
+                loja.descricao,
+                loja.categoria,
+                loja.status || 'pendente',
+                loja.id
+            ];
+        } else {
+            sql = "INSERT INTO lojas (nome_negocio, cnpj, telefone, email, descricao, categoria, status, id_usuario_solicitante) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            params = [
+                loja.nome_negocio,
+                loja.cnpj,
+                loja.telefone,
+                loja.email,
+                loja.descricao,
+                loja.categoria,
+                loja.status || 'pendente',
+                loja.id_usuario_solicitante || 1
+            ];
+        }
+
+        const [result] = await conn.promise().query(sql, params);
+        const lojaId = loja.id || result.insertId;
+
+        // Se tiver imagem para upload
+        if (loja.imagem_base64) {
+            const imagemBuffer = Buffer.from(loja.imagem_base64, 'base64');
+            await conn.promise().query(
+                'UPDATE lojas SET imagem_blob = ? WHERE id = ?',
+                [imagemBuffer, lojaId]
+            );
+        }
+
+        const [lojaAtualizada] = await conn.promise().query('SELECT * FROM lojas WHERE id = ?', [lojaId]);
+        res.status(201).json(lojaAtualizada[0]);
+    } catch (error) {
+        console.error("Erro ao salvar loja:", error);
+        res.status(500).json({ error: "Erro ao salvar loja" });
     }
 });
 
-app.get('/api/loja/:id', (req, res) => {
-    const { id } = req.params;
-    let sql = "SELECT l.id, l.nome FROM lojas l WHERE l.id = ?";
-    conn.query(sql, [id], function (err, result) {
-        if (err) return res.status(500).json(err);
-        res.status(200).json(result[0]);
-    });
-});
+// Rota GET para loja específica
+router.get('/api/loja/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const [lojas] = await conn.promise().query('SELECT * FROM lojas WHERE id = ?', [id]);
 
-app.delete('/api/loja/:id', function (req, res) {
-    const { id } = req.params;
-    let sql = "DELETE FROM lojas WHERE id = ?";
-    conn.query(sql, [id], function (err, result) {
-        if (err) return res.status(500).json(err);
-        res.status(200).json({ message: 'Loja deletada com sucesso!' });
-    });
-});
-app.get('/api/stats/lojas', (req, res) => {
-    const sql = "SELECT COUNT(*) AS total FROM lojas WHERE status = 'aprovado'";
-    conn.query(sql, (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.status(200).json(result[0]);
-    });
+        if (lojas.length === 0) {
+            return res.status(404).json({ error: 'Loja não encontrada' });
+        }
+
+        const loja = {
+            ...lojas[0],
+            imagem_base64: lojas[0].imagem_blob ? lojas[0].imagem_blob.toString('base64') : null
+        };
+
+        res.status(200).json(loja);
+    } catch (error) {
+        console.error("Erro ao buscar loja:", error);
+        res.status(500).json({ error: "Erro ao buscar loja" });
+    }
 });
 
 // ---ROTAS EVENTOS---
 
-app.get('/api/evento', function (req, res) {
-    let sql = "SELECT * FROM eventos";
-    const { status } = req.query;
-    if (status) {
-        sql += " WHERE status = ?";
-        conn.query(sql, [status], function (err, result) {
-            if (err) return res.status(500).json(err);
-            res.status(200).json(result);
-        });
-    } else {
-        conn.query(sql, function (err, result) {
-            if (err) return res.status(500).json(err);
-            res.status(200).json(result);
-        });
-    }
+app.get('/api/evento', async (req, res) => {
+  try {
+    const [eventos] = await conn.promise().query(`
+      SELECT 
+        id,
+        nome_evento,
+        email_contato,
+        data_inicio,
+        data_fim,
+        imagem_blob,
+        status,
+        DATE_FORMAT(data_inicio, '%d/%m/%Y') as data_inicio_formatada,
+        DATE_FORMAT(data_fim, '%d/%m/%Y') as data_fim_formatada,
+        descricao
+      FROM eventos
+      WHERE status = 'aprovado'
+    `);
+
+    const eventosComImagens = eventos.map(evento => ({
+      ...evento,
+      imagem_base64: evento.imagem_blob ? evento.imagem_blob.toString('base64') : null
+    }));
+
+    res.status(200).json(eventosComImagens);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao buscar eventos" });
+  }
 });
 
+// Rota POST para criar/atualizar eventos
+router.post('/api/evento', async (req, res) => {
+  try {
+    const evento = req.body;
+    let sql, params;
 
-app.post('/api/evento', function (req, res) {
-    var evento = req.body;
     if (evento.id) {
-        sql = "UPDATE eventos SET nome = ? WHERE id = ?";
-        conn.query(sql, [evento.nome, evento.id], function (err, result) {
-            if (err) return res.status(500).json(err);
-            res.status(201).json(evento);
-        });
+      sql = "UPDATE eventos SET nome_evento = ?, email_contato = ?, data_inicio = ?, data_fim = ?, horario_inicio = ?, horario_fim = ?, piso = ?, tipo_evento = ?, descricao = ?, status = ? WHERE id = ?";
+      params = [
+        evento.nome_evento,
+        evento.email_contato,
+        evento.data_inicio,
+        evento.data_fim,
+        evento.horario_inicio,
+        evento.horario_fim,
+        evento.piso,
+        evento.tipo_evento,
+        evento.descricao,
+        evento.status,
+        evento.id
+      ];
     } else {
-        sql = "INSERT INTO eventos (nome) VALUES (?)";
-        conn.query(sql, [evento.nome], function (err, result) {
-            if (err) return res.status(500).json(err);
-            evento.id = result.insertId;
-            res.status(201).json(evento);
-        });
+      sql = "INSERT INTO eventos (nome_evento, email_contato, data_inicio, data_fim, horario_inicio, horario_fim, piso, tipo_evento, descricao, status, id_usuario_solicitante) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+      params = [
+        evento.nome_evento,
+        evento.email_contato,
+        evento.data_inicio,
+        evento.data_fim,
+        evento.horario_inicio,
+        evento.horario_fim,
+        evento.piso,
+        evento.tipo_evento,
+        evento.descricao,
+        evento.status || 'pendente',
+        evento.id_usuario_solicitante || 1
+      ];
     }
+
+    const [result] = await conn.promise().query(sql, params);
+    const eventoId = evento.id || result.insertId;
+
+    // Se tiver imagem para upload
+    if (evento.imagem_base64) {
+      const imagemBuffer = Buffer.from(evento.imagem_base64, 'base64');
+      await conn.promise().query(
+        'UPDATE eventos SET imagem_blob = ? WHERE id = ?',
+        [imagemBuffer, eventoId]
+      );
+    }
+
+    const [eventoAtualizado] = await conn.promise().query('SELECT * FROM eventos WHERE id = ?', [eventoId]);
+    res.status(201).json(eventoAtualizado[0]);
+  } catch (error) {
+    console.error("Erro ao salvar evento:", error);
+    res.status(500).json({ error: "Erro ao salvar evento" });
+  }
 });
 
-app.get('/api/evento/:id', (req, res) => {
+// Rota GET para evento específico
+router.get('/api/evento/:id', async (req, res) => {
+  try {
     const { id } = req.params;
-    let sql = "SELECT e.id, e.nome FROM eventos e WHERE e.id = ?";
-    conn.query(sql, [id], function (err, result) {
-        if (err) return res.status(500).json(err);
-        res.status(200).json(result[0]);
-    });
+    const [eventos] = await conn.promise().query(`
+      SELECT *, 
+        DATE_FORMAT(data_inicio, '%d/%m/%Y') as data_inicio_formatada,
+        DATE_FORMAT(data_fim, '%d/%m/%Y') as data_fim_formatada
+      FROM eventos 
+      WHERE id = ?
+    `, [id]);
+
+    if (eventos.length === 0) {
+      return res.status(404).json({ error: 'Evento não encontrado' });
+    }
+
+    const evento = {
+      ...eventos[0],
+      imagem_base64: eventos[0].imagem_blob ? eventos[0].imagem_blob.toString('base64') : null
+    };
+
+    res.status(200).json(evento);
+  } catch (error) {
+    console.error("Erro ao buscar evento:", error);
+    res.status(500).json({ error: "Erro ao buscar evento" });
+  }
 });
 
-app.delete('/api/evento/:id', function (req, res) {
+// Rota DELETE para evento
+router.delete('/api/evento/:id', async (req, res) => {
+  try {
     const { id } = req.params;
-    let sql = "DELETE FROM eventos WHERE id = ?";
-    conn.query(sql, [id], function (err, result) {
-        if (err) return res.status(500).json(err);
-        res.status(200).json({ message: 'Evento deletado com sucesso!' });
-    });
+    await conn.promise().query('DELETE FROM eventos WHERE id = ?', [id]);
+    res.status(200).json({ message: 'Evento deletado com sucesso!' });
+  } catch (error) {
+    console.error("Erro ao deletar evento:", error);
+    res.status(500).json({ error: "Erro ao deletar evento" });
+  }
 });
+
+// Função auxiliar para formatar datas
+function formatarData(data) {
+  if (!data) return '';
+  const date = new Date(data);
+  return date.toLocaleDateString('pt-BR');
+}
 
 // =================== INICIAR SERVIDOR ====================
 

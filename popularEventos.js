@@ -37,18 +37,18 @@ async function popularEventos() {
 
         for (const evento of EVENTOS) {
             try {
-                const imagem = await fs.readFile(evento.imagem);
+                const imagemBuffer = await fs.readFile(evento.imagem);
                 
                 await conn.execute(`
-                    INSERT INTO EVENTOS (
+                    INSERT INTO eventos (
                         nome_evento, email_contato, data_inicio, data_fim,
                         horario_inicio, horario_fim, piso, tipo_evento,
-                        imagem_path, descricao, status, id_usuario_solicitante
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        imagem_blob, imagem_path, descricao, status, id_usuario_solicitante
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `, [
-                    evento.nome, evento.email, "2023-07-15", "2023-07-16",
+                    evento.nome, evento.email, "2025-07-15", "2025-07-16",
                     "14:00:00", "18:00:00", "1", "cultural",
-                    evento.imagem, `Descrição do ${evento.nome}`, "aprovado", 1
+                    imagemBuffer, evento.imagem, `Descrição do ${evento.nome}`, "aprovado", 1
                 ]);
                 
                 console.log(`Evento '${evento.nome}' inserido com sucesso!`);

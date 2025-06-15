@@ -8,7 +8,6 @@ const jwt = require('jsonwebtoken');
 const SECRET = 'segreto-seguro'; 
 const router = express.Router();
 
-
 app.use(express.json());
 app.use('/api', router);
 app.use(cors());

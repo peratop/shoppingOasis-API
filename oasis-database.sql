@@ -1,4 +1,5 @@
 -- Criação do banco de dados
+DROP DATABASE IF EXISTS shopping_oasis;
 CREATE DATABASE shopping_oasis;
 USE shopping_oasis;
 

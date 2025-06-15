@@ -16,7 +16,7 @@ var mysql = require('mysql2');
 var conn = mysql.createConnection({
     host: "localhost",
     user: "root",
-    password: "pucPR@1234",
+    password: "pucPR@123",
     database: "shopping_oasis",
     port: "3306"
 });

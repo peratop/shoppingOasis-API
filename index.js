@@ -160,8 +160,6 @@ app.get('/api/admin/dashboard', verificarToken, (req, res) => {
     });
 });
   
-// ---ROTAS LOJAS---
-
 // --- ROTAS LOJAS ---
 
 // Rota GET para todas as lojas (aprovadas)

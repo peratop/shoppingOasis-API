@@ -6,7 +6,7 @@ async function popularLojas() {
     const conn = await mysql.createConnection({
         host: "localhost",
         user: "root",
-        password: "pucPR@123",
+        password: "pucPR@1234",
         database: "shopping_oasis",
         port: "3306"
     });
@@ -91,6 +91,7 @@ async function popularLojas() {
         for (const loja of LOJAS) {
             try {
                 const imagePath = path.join(__dirname, 'public', 'images', 'LOJAS', loja.imagem);
+                console.log("tentando ler imagem: ", imagePath)
                 const imagemBuffer = await fs.readFile(imagePath);
                 const finalImagePath = path.join('public', 'images', 'LOJAS', loja.imagem);
                 

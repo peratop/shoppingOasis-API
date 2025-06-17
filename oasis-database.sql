@@ -51,3 +51,5 @@ CREATE TABLE eventos (
     id_usuario_solicitante INT,
     FOREIGN KEY (id_usuario_solicitante) REFERENCES usuarios(id)
 );
+ALTER TABLE lojas ADD COLUMN imagem_blob LONGBLOB;
+ALTER TABLE eventos ADD COLUMN imagem_blob LONGBLOB;

@@ -8,8 +8,8 @@ const jwt = require('jsonwebtoken');
 const SECRET = 'segreto-seguro'; 
 const router = express.Router();
 
-app.use(express.json());
 app.use('/api', router);
+app.use(express.json({ limit: '10mb' }));
 app.use(cors());
 
 var mysql = require('mysql2');
@@ -192,7 +192,7 @@ app.get('/api/loja', async (req, res) => {
 });
 
 // Rota POST para criar/atualizar lojas
-router.post('/api/loja', async (req, res) => {
+app.post('/api/loja', async (req, res) => {
     try {
         const loja = req.body;
         let sql, params;
@@ -226,7 +226,6 @@ router.post('/api/loja', async (req, res) => {
         const [result] = await conn.promise().query(sql, params);
         const lojaId = loja.id || result.insertId;
 
-        // Se tiver imagem para upload
         if (loja.imagem_base64) {
             const imagemBuffer = Buffer.from(loja.imagem_base64, 'base64');
             await conn.promise().query(
@@ -241,6 +240,11 @@ router.post('/api/loja', async (req, res) => {
         console.error("Erro ao salvar loja:", error);
         res.status(500).json({ error: "Erro ao salvar loja" });
     }
+});
+
+app.listen(PORT, function (err) {
+    if (err) console.log(err);
+    console.log("Server listening on PORT", PORT);
 });
 
 // Rota GET para loja específica

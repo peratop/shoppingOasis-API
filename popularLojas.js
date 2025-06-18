@@ -6,7 +6,7 @@ async function popularLojas() {
     const conn = await mysql.createConnection({
         host: "localhost",
         user: "root",
-        password: "pucPR@1234",
+        password: "pucPR@123",
         database: "shopping_oasis",
         port: "3306"
     });

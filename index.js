@@ -18,7 +18,7 @@ var mysql = require('mysql2');
 var conn = mysql.createConnection({
     host: "localhost",
     user: "root",
-    password: "pucPR@123",
+    password: "pucPR@1234",
     database: "shopping_oasis",
     port: "3306"
 });
@@ -190,31 +190,32 @@ app.get('/api/loja', async (req, res) => {
         res.status(500).json({ error: "Erro ao buscar lojas" });
     }
 });
+
 // Rota GET para lojas pendentes
 app.get('/api/loja/pendente', async (req, res) => {
-    try {
-        const [lojas] = await conn.promise().query(`
-            SELECT
-                id,
-                nome_negocio,
-                categoria,
-                email,
-                telefone,
-                descricao,
-                imagem_blob,
-                status
-            FROM lojas
-            WHERE status = 'pendente'
-        `);
-        const lojasComImagens = lojas.map(loja => ({
-            ...loja,
-            imagem_base64: loja.imagem_blob ? loja.imagem_blob.toString('base64') : null
-        }));
-        res.status(200).json(lojasComImagens);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Erro ao buscar lojas pendentes" });
-    }
+  try {
+    const [lojas] = await conn.promise().query(`
+      SELECT
+        id,
+        nome_negocio,
+        categoria,
+        email,
+        telefone,
+        descricao,
+        imagem_blob,
+        status
+      FROM lojas
+      WHERE status = 'pendente'
+    `);
+    const lojasComImagens = lojas.map(loja => ({
+      ...loja,
+      imagem_base64: loja.imagem_blob ? loja.imagem_blob.toString('base64') : null
+    }));
+    res.status(200).json(lojasComImagens);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao buscar lojas pendentes" });
+  }
 });
 
 // Rota POST para criar/atualizar lojas
@@ -267,43 +268,6 @@ app.post('/api/loja', async (req, res) => {
         res.status(500).json({ error: "Erro ao salvar loja" });
     }
 });
-app.post('/api/loja/aprovar/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const sql = "UPDATE lojas SET status = 'aprovado' WHERE id = ?";
-        await conn.promise().query(sql, [id]);
-        res.status(200).json({ message: 'Loja aprovada com sucesso!' });
-    } catch (error) {
-        console.error("Erro ao aprovar loja:", error);
-        res.status(500).json({ error: "Erro ao aprovar loja" });
-    }
-});
-
-// Rota DELETE para loja
-app.delete('/api/loja/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        await conn.promise().query('DELETE FROM lojas WHERE id = ?', [id]);
-        res.status(200).json({ message: 'Loja deletada com sucesso!' });
-    } catch (error) {
-        console.error('Erro ao deletar loja:', error);
-        res.status(500).json({ error: 'Erro ao deletar loja' });
-    }
-});
-
-// Rota PUT para editar loja
-app.put('/api/loja/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { nome_negocio, cnpj, telefone, email, descricao, categoria, status } = req.body;
-        const sql = `UPDATE lojas SET nome_negocio = ?, cnpj = ?, telefone = ?, email = ?, descricao = ?, categoria = ?, status = ? WHERE id = ?`;
-        await conn.promise().query(sql, [nome_negocio, cnpj, telefone, email, descricao, categoria, status, id]);
-        res.status(200).json({ message: 'Loja atualizada com sucesso!' });
-    } catch (error) {
-        console.error('Erro ao editar loja:', error);
-        res.status(500).json({ error: 'Erro ao editar loja' });
-    }
-});
 
 app.listen(PORT, function (err) {
     if (err) console.log(err);
@@ -333,35 +297,6 @@ router.get('/api/loja/:id', async (req, res) => {
 });
 
 // ---ROTAS EVENTOS---
-
-app.get('/api/evento/pendente', async (req, res) => {
-  try {
-    const [eventos] = await conn.promise().query(`
-      SELECT
-        id,
-        nome_evento,
-        email_contato,
-        data_inicio,
-        data_fim,
-        status,
-        DATE_FORMAT(data_inicio, '%d/%m/%Y') as data_inicio_formatada,
-        DATE_FORMAT(data_fim, '%d/%m/%Y') as data_fim_formatada,
-        descricao,
-        imagem_blob
-      FROM eventos
-      WHERE status = 'pendente'
-    `);
-    const eventosComImagens = eventos.map(evento => ({
-      ...evento,
-      imagem_base64: evento.imagem_blob ? evento.imagem_blob.toString('base64') : null
-    }));
-    res.status(200).json(eventosComImagens);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Erro ao buscar eventos pendentes" });
-  }
-});
-// Rota GET para todos os eventos (aprovados)
 
 app.get('/api/evento', async (req, res) => {
   try {
@@ -393,9 +328,39 @@ app.get('/api/evento', async (req, res) => {
   }
 });
 
-// Rota POST para criar/atualizar eventos
-router.post('/api/evento', async (req, res) => {
+// Rota GET para eventos pendentes
+app.get('/api/evento/pendente', async (req, res) => {
   try {
+    const [eventos] = await conn.promise().query(`
+      SELECT
+        id,
+        nome_evento,
+        email_contato,
+        data_inicio,
+        data_fim,
+        status,
+        DATE_FORMAT(data_inicio, '%d/%m/%Y') as data_inicio_formatada,
+        DATE_FORMAT(data_fim, '%d/%m/%Y') as data_fim_formatada,
+        descricao,
+        imagem_blob
+      FROM eventos
+      WHERE status = 'pendente'
+    `);
+    const eventosComImagens = eventos.map(evento => ({
+      ...evento,
+      imagem_base64: evento.imagem_blob ? evento.imagem_blob.toString('base64') : null
+    }));
+    res.status(200).json(eventosComImagens);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao buscar eventos pendentes" });
+  }
+});
+
+// Rota POST para criar/atualizar eventos
+app.post('/api/evento', async (req, res) => {
+  try {
+    console.log('Recebido:', req.body); // Log para depuração
     const evento = req.body;
     let sql, params;
 
@@ -452,7 +417,7 @@ router.post('/api/evento', async (req, res) => {
 });
 
 // Rota GET para evento específico
-router.get('/api/evento/:id', async (req, res) => {
+app.get('/api/evento/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const [eventos] = await conn.promise().query(`
@@ -491,15 +456,27 @@ app.post('/api/evento/aprovar/:id', async (req, res) => {
     }
 });
 
-// Rota DELETE para evento
-router.delete('/api/evento/:id', async (req, res) => {
+// Rota DELETE para deletar loja
+app.delete('/api/loja/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await conn.promise().query('DELETE FROM lojas WHERE id = ?', [id]);
+    res.status(200).json({ message: 'Loja deletada com sucesso!' });
+  } catch (error) {
+    console.error('Erro ao deletar loja:', error);
+    res.status(500).json({ error: 'Erro ao deletar loja' });
+  }
+});
+
+// Rota DELETE para deletar evento
+app.delete('/api/evento/:id', async (req, res) => {
   try {
     const { id } = req.params;
     await conn.promise().query('DELETE FROM eventos WHERE id = ?', [id]);
     res.status(200).json({ message: 'Evento deletado com sucesso!' });
   } catch (error) {
-    console.error("Erro ao deletar evento:", error);
-    res.status(500).json({ error: "Erro ao deletar evento" });
+    console.error('Erro ao deletar evento:', error);
+    res.status(500).json({ error: 'Erro ao deletar evento' });
   }
 });
 
@@ -590,5 +567,33 @@ app.put('/api/evento/:id', async (req, res) => {
   } catch (error) {
     console.error('Erro ao editar evento:', error);
     res.status(500).json({ error: 'Erro ao editar evento' });
+  }
+});
+
+// Rota GET para estatísticas de pendentes (lojas e eventos)
+app.get('/api/stats/pendentes', async (req, res) => {
+  try {
+    const [[lojasPendentes]] = await conn.promise().query("SELECT COUNT(*) AS lojasPendentes FROM lojas WHERE status = 'pendente'");
+    const [[eventosPendentes]] = await conn.promise().query("SELECT COUNT(*) AS eventosPendentes FROM eventos WHERE status = 'pendente'");
+    res.status(200).json({
+      lojasPendentes: lojasPendentes.lojasPendentes,
+      eventosPendentes: eventosPendentes.eventosPendentes
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao buscar estatísticas de pendentes" });
+  }
+});
+
+// Rota POST para aprovar loja
+app.post('/api/loja/aprovar/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sql = "UPDATE lojas SET status = 'aprovado' WHERE id = ?";
+    await conn.promise().query(sql, [id]);
+    res.status(200).json({ message: 'Loja aprovada com sucesso!' });
+  } catch (error) {
+    console.error("Erro ao aprovar loja:", error);
+    res.status(500).json({ error: "Erro ao aprovar loja" });
   }
 });

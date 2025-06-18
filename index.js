@@ -136,12 +136,12 @@ app.put('/api/usuario/:id', (req, res) => {
     });
 });
 
-
+// Deletar usuário
 app.delete('/api/usuario/:id', function (req, res) {
     const { id } = req.params;
-    let sql = "DELETE FROM usuarios WHERE id = ?";
+    const sql = "DELETE FROM usuarios WHERE id = ?";
     conn.query(sql, [id], function (err, result) {
-        if (err) return res.status(500).json(err);
+        if (err) return res.status(500).json({ error: err.message });
         res.status(200).json({ message: 'Usuário deletado com sucesso!' });
     });
 });
